@@ -1,0 +1,71 @@
+version: '3.6'
+
+networks:
+  raft_example_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.1.0.0/24
+
+services:
+  node_1:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    volumes:
+        - type: tmpfs
+          target: /data/
+
+    environment:
+        BIND: "10.1.0.101:4001"
+        IDENTIFIER: "node_1"
+        HTTP: "True"
+        BOOTSTRAP: "True"
+
+    ports:
+        - "127.0.0.1:4001:8080"
+    networks:
+        raft_example_net:
+            ipv4_address: '10.1.0.101'
+
+  node_2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    environment:
+        BIND: "10.1.0.102:4002"
+        JOIN: "10.1.0.101:8080"
+        IDENTIFIER: "node_2"
+    volumes:
+        - type: tmpfs
+          target: /data/
+
+    depends_on:
+        - node_1
+    ports:
+        - "127.0.0.1:4002:8080"
+    networks:
+      raft_example_net:
+        ipv4_address: '10.1.0.102'
+
+  node_3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    environment:
+        BIND: "10.1.0.103:4003"
+        JOIN: "10.1.0.101:8080"
+        IDENTIFIER: "node_3"
+    volumes:
+        - type: tmpfs
+          target: /data/
+
+    depends_on:
+        - node_1
+    ports:
+        - "127.0.0.1:4003:8080"
+    networks:
+      raft_example_net:
+        ipv4_address: '10.1.0.103'
