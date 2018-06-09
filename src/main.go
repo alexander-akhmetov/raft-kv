@@ -42,23 +42,25 @@ func main() {
 		DataDir:        opts.DataDir,
 		Bootstrap:      opts.Bootstrap,
 	}
-	raftNode, err := node.NewRStorage(&config)
+	storage, err := node.NewRStorage(&config)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	msg := fmt.Sprintf("[INFO] Started node=%s", raftNode.RaftNode)
+	msg := fmt.Sprintf("[INFO] Started node=%s", storage.RaftNode)
 	log.Println(msg)
 
-	go printStatus(raftNode)
+	go printStatus(storage)
 
-	// If JoinAddress is not nil, we have to send a POST request to this address
+	// If JoinAddress is not nil and tehre is no cluster, we have to send a POST request to this address
 	// It must be an address of the cluster leader
 	// We send POST request every second until it succeed
-	if config.JoinAddress != "" {
-		time.Sleep(time.Second * 1)
+	servers, err := storage.GetClusterServers()
+	notInCluster := (err != nil || len(servers) < 2)
+	if config.JoinAddress != "" && notInCluster {
 		for 1 == 1 {
-			err := joinCluster(config.JoinAddress, config.BindAddress)
+			time.Sleep(time.Second * 1)
+			err := joinCluster(storage, config.JoinAddress, config.BindAddress)
 			if err != nil {
 				log.Printf("[ERROR] Can't join the cluster: %+v", err)
 			} else {
@@ -68,7 +70,7 @@ func main() {
 	}
 
 	// Start an HTTP server
-	server.RunHTTPServer(raftNode)
+	server.RunHTTPServer(storage)
 }
 
 func readOpts() Opts {
@@ -82,7 +84,7 @@ func readOpts() Opts {
 
 // joinCluster sends a POST request to "join" address
 // to ask the cluster leader join this node as a voter
-func joinCluster(address string, myAddress string) error {
+func joinCluster(storage *node.RStorage, address string, myAddress string) error {
 	body, err := json.Marshal(map[string]string{"address": myAddress})
 	if err != nil {
 		return err

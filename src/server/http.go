@@ -15,6 +15,7 @@ type joinData struct {
 // joinView handles 'join' request from another nodes
 // if some node wants to join to the cluster it must be added by leader
 // so this node sends a POST request to the leader with it's address and the leades adds it as a voter
+// if this node os not a leader, it forwards request to current cluster leader
 func joinView(storage *node.RStorage) func(*gin.Context) {
 	view := func(c *gin.Context) {
 		var data joinData
@@ -66,7 +67,9 @@ func setKeyView(storage *node.RStorage) func(*gin.Context) {
 				"error": fmt.Sprintf("%+v", err),
 			})
 		} else {
-			c.JSON(200, gin.H{})
+			c.JSON(200, gin.H{
+				"value": data.Value,
+			})
 		}
 	}
 	return view

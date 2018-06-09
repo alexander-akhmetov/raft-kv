@@ -99,17 +99,22 @@ func raftTransport(bindAddr string) (*raft.NetworkTransport, error) {
 	return transport, nil
 }
 
-// AddVoter joins a new voter to a cluster
-// must be called only on a leader
-func (n *RStorage) AddVoter(address string) error {
-	log.Printf("[INFO] trying to add new voter at [%s] to the cluster", address)
-	configFuture := n.RaftNode.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		log.Printf("failed to get raft configuration: %v", err)
-		return err
+// GetClusterServers returns all cluster's servers
+func (s *RStorage) GetClusterServers() ([]raft.Server, error) {
+	confugurationFuture := s.RaftNode.GetConfiguration()
+	if err := confugurationFuture.Error(); err != nil {
+		log.Printf("[ERROR] Reading Raft configuration error: %+v", err)
+		return nil, err
 	}
 
-	addFuture := n.RaftNode.AddVoter(raft.ServerID(address), raft.ServerAddress(address), 0, 0)
+	return confugurationFuture.Configuration().Servers, nil
+}
+
+// AddVoter joins a new voter to a cluster
+// must be called only on a leader
+func (s *RStorage) AddVoter(address string) error {
+	log.Printf("[INFO] trying to add new voter at [%s] to the cluster", address)
+	addFuture := s.RaftNode.AddVoter(raft.ServerID(address), raft.ServerAddress(address), 0, 0)
 	if err := addFuture.Error(); err != nil {
 		log.Printf("[ERROR] cant join to the cluster: %v", err)
 		return err
