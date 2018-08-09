@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -31,7 +28,11 @@ func main() {
 	// so other nodes will be able to join the cluster.
 	// Basically, they send a POST request to the leader with their IP address,
 	// and it adds them to the cluster
-	opts := readOpts()
+	var opts Opts
+	p := flags.NewParser(&opts, flags.Default)
+	if _, err := p.ParseArgs(os.Args[1:]); err != nil {
+		log.Panicln(err)
+	}
 
 	log.Printf("[INFO] '%s' is used to store files of the node", opts.DataDir)
 
@@ -52,15 +53,13 @@ func main() {
 
 	go printStatus(storage)
 
-	// If JoinAddress is not nil and tehre is no cluster, we have to send a POST request to this address
+	// If JoinAddress is not nil and there is no cluster, we have to send a POST request to this address
 	// It must be an address of the cluster leader
 	// We send POST request every second until it succeed
-	servers, err := storage.GetClusterServers()
-	notInCluster := (err != nil || len(servers) < 2)
-	if config.JoinAddress != "" && notInCluster {
+	if config.JoinAddress != "" {
 		for 1 == 1 {
 			time.Sleep(time.Second * 1)
-			err := joinCluster(storage, config.JoinAddress, config.BindAddress)
+			err := storage.JoinCluster(config.JoinAddress)
 			if err != nil {
 				log.Printf("[ERROR] Can't join the cluster: %+v", err)
 			} else {
@@ -73,42 +72,9 @@ func main() {
 	server.RunHTTPServer(storage)
 }
 
-func readOpts() Opts {
-	var opts Opts
-	p := flags.NewParser(&opts, flags.Default)
-	if _, err := p.ParseArgs(os.Args[1:]); err != nil {
-		log.Panicln(err)
-	}
-	return opts
-}
-
-// joinCluster sends a POST request to "join" address
-// to ask the cluster leader join this node as a voter
-func joinCluster(storage *node.RStorage, address string, myAddress string) error {
-	body, err := json.Marshal(map[string]string{"address": myAddress})
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(
-		fmt.Sprintf("http://%s/cluster/join/", address),
-		"application-type/json",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("Leader status code is not 200: %v", resp.StatusCode)
-	}
-	defer resp.Body.Close()
-
-	return nil
-}
-
-func printStatus(storage *node.RStorage) {
+func printStatus(s *node.RStorage) {
 	for 1 == 1 {
-		log.Printf("[DEBUG] state=%s leader=%s", storage.RaftNode.State(), storage.RaftNode.Leader())
+		log.Printf("[DEBUG] state=%s leader=%s", s.RaftNode.State(), s.RaftNode.Leader())
 		time.Sleep(time.Second * 2)
 	}
 }

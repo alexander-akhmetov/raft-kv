@@ -1,8 +1,12 @@
 package node
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,6 +28,7 @@ type Config struct {
 func NewRStorage(config *Config) (*RStorage, error) {
 	rstorage := RStorage{
 		storage: map[string]string{},
+		config:  *config,
 	}
 
 	if err := os.MkdirAll(config.DataDir, 0700); err != nil {
@@ -119,5 +124,36 @@ func (s *RStorage) AddVoter(address string) error {
 		log.Printf("[ERROR] cant join to the cluster: %v", err)
 		return err
 	}
+	return nil
+}
+
+// JoinCluster sends a POST request to "join" address
+// to ask the cluster leader join this node as a voter
+func (s *RStorage) JoinCluster(leaderHTTPAddress string) error {
+	servers, err := s.GetClusterServers()
+	alreadyInCluster := (err == nil && len(servers) > 1)
+	if alreadyInCluster {
+		log.Printf("[INFO] Node already in the cluster, skipping /cluster/join/ POST request to the leader")
+		return nil
+	}
+
+	body, err := json.Marshal(map[string]string{"address": s.config.BindAddress})
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s/cluster/join/", leaderHTTPAddress),
+		"application-type/json",
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Leader status code is not 200: %v", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+
 	return nil
 }

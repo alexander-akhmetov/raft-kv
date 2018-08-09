@@ -18,6 +18,7 @@ type RStorage struct {
 	mutex    sync.Mutex
 	storage  map[string]string
 	RaftNode *raft.Raft
+	config   Config
 }
 
 // Get value by key

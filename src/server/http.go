@@ -75,14 +75,18 @@ func setKeyView(storage *node.RStorage) func(*gin.Context) {
 	return view
 }
 
-// RunHTTPServer starts HTTP server
-func RunHTTPServer(raftNode *node.RStorage) {
-
+func setupRouter(raftNode *node.RStorage) *gin.Engine {
 	router := gin.Default()
 
 	router.POST("/cluster/join/", joinView(raftNode))
 	router.GET("/keys/:key/", getKeyView(raftNode))
 	router.POST("/keys/:key/", setKeyView(raftNode))
 
+	return router
+}
+
+// RunHTTPServer starts HTTP server
+func RunHTTPServer(raftNode *node.RStorage) {
+	router := setupRouter(raftNode)
 	router.Run() // listen and serve on 0.0.0.0:8080
 }
