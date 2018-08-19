@@ -8,7 +8,7 @@ This is a simple distributed in-memory key-value storage which has an HTTP inter
 ## Why?
 
 I wanted to try to build something with Raft, so I decided to create yet another key-value storage. It will run elections to choose a new leader automatically if the current leader fails.
-It's very simple in-memory key-value storage which is not meant to be a reliable KV DB and not for production usage of course :)
+It's very simple in-memory key-value storage which is not meant to be a reliable KV DB and **not** for production usage of course :)
 
 Useful links:
 
