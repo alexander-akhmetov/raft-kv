@@ -1,8 +1,0 @@
-language: go
-
-go_import_path: github.com/alexander-akhmetov/raft-example/
-
-go:
-  - "1.10"
-
-script: make test
